@@ -1,4 +1,4 @@
-# GodlikeAgents v4.3.0
+# GodlikeAgents v1.0.0
 
 基于 **Java 17 + Spring Boot 4.0.5 + Spring Security 6.x** 的多租户权限管理系统，内置 AI Agent 深度推理引擎。
 

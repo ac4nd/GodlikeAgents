@@ -6,7 +6,7 @@
 
     <groupId>com.hypersense</groupId>
     <artifactId>godlikeagents</artifactId>
-    <version>4.3.0</version>
+    <version>1.0.0</version>
     <description>基于 Java 17 + SpringBoot 4 + Spring Security 构建的多租户权限管理系统。</description>
 
     <parent>
