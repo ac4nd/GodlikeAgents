@@ -4,90 +4,89 @@ server:
 spring:
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
-    # === PostgreSQL 数据源（默认启用） ===
+    # === PostgreSQL 数据源 ===
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:5432/godlikeagents?currentSchema=public&stringtype=unspecified
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:your-password}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:godlikeagents}?currentSchema=public&stringtype=unspecified
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     druid:
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+      test-on-borrow: false
+      test-while-idle: true
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      validation-query: SELECT 1
+      pool-prepared-statements: true
+      max-pool-prepared-statement-per-connection-size: 20
+      filters: stat,wall,log4j
       connection-init-sqls:
         - SET search_path TO public
 
   data:
     redis:
-      database: 11
-      host: ${REDIS_HOST:localhost}
-      port: 6379
-      password: 123456
+      database: ${REDIS_DATABASE:0}
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
       timeout: 10s
       lettuce:
         pool:
-          # 连接池最大连接数 默认8 ，负数表示没有限制
           max-active: 8
-          # 连接池最大阻塞等待时间（使用负值表示没有限制） 默认-1
           max-wait: -1
-          # 连接池中的最大空闲连接 默认8
           max-idle: 8
-          # 连接池中的最小空闲连接 默认0
           min-idle: 0
   cache:
     enabled: false
-    # 缓存类型 redis、none(不使用缓存)
     type: redis
-    # 缓存时间(单位：ms)
     redis:
       time-to-live: 3600000
-      # 缓存null值，防止缓存穿透
       cache-null-values: true
     caffeine:
       spec: initialCapacity=50,maximumSize=1000,expireAfterWrite=600s
   # 邮件配置
-    password: ${MAIL_PASSWORD:your-mail-password}
+  mail:
+    host: ${MAIL_HOST:smtp.example.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       smtp:
         auth: true
         starttls:
           enable: true
-    # 邮件发送者
-    from: 18659922013@163.com
+    from: ${MAIL_FROM:noreply@example.com}
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   global-config:
     db-config:
-      # 主键ID类型
       id-type: none
-      # 逻辑删除对应的全局属性名（注意：须是对象属性名，不能是表字段名，如 isDeleted 而非 is_deleted，否则逻辑删除失效）
       logic-delete-field: isDeleted
-      # 逻辑删除-删除值
       logic-delete-value: 1
-      # 逻辑删除-未删除值
       logic-not-delete-value: 0
   configuration:
-    # 驼峰下划线转换
     map-underscore-to-camel-case: true
-    # 这个配置会将执行的sql打印出来，在开发或测试的时候可以用
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
 # 安全配置
 security:
   session:
-    type: jwt # 会话方式 [jwt|redis-token]
-    access-token-time-to-live: 7200 # 访问令牌 有效期(单位：秒)，默认 2 小时，-1 表示永不过期
-    refresh-token-time-to-live: 604800 # 刷新令牌有效期(单位：秒)，默认 7 天，-1 表示永不过期
+    type: jwt
+    access-token-time-to-live: 7200
+    refresh-token-time-to-live: 604800
     jwt:
-      secret-key: ${JWT_SECRET:your-jwt-secret-key-at-least-32-characters-long}
+      secret-key: ${JWT_SECRET}
     redis-token:
-      allow-multi-login: true # 是否允许多设备登录
-  # 安全白名单路径，仅跳过 AuthorizationFilter 过滤器，还是会走 Spring Security 的其他过滤器(CSRF、CORS等)
+      allow-multi-login: true
   ignore-urls:
-    - /api/v1/auth/login/** # 登录接口(账号密码登录、手机验证码登录和微信登录)
-    - /api/v1/auth/captcha # 验证码获取接口
-    - /api/v1/auth/sms/code # 发送登录短信验证码
-    - /api/v1/auth/refresh-token # 刷新令牌接口
-    - /api/v1/wxma/auth/** # 微信小程序认证接口(静默登录/手机号快捷登录/绑定手机号)
-    - /api/v1/logs/** # 日志接口(访问日志列表)
-  # 非安全端点路径，完全绕过 Spring Security 的过滤器
+    - /api/v1/auth/login/**
+    - /api/v1/auth/captcha
+    - /api/v1/auth/sms/code
+    - /api/v1/auth/refresh-token
+    - /api/v1/wxma/auth/**
+    - /api/v1/logs/**
+    - /api/v1/agent/**
   unsecured-urls:
     - ${springdoc.swagger-ui.path}
     - /doc.html
@@ -99,56 +98,39 @@ security:
 
 # 文件存储配置
 oss:
-  # OSS 类型 (目前支持aliyun、minio)
-  type: minio
-  # MinIO 对象存储服务
+  type: ${OSS_TYPE:minio}
   minio:
-    # 服务Endpoint
-    endpoint: http://localhost:9000
-    # 访问凭据
-    access-key: minioadmin
-    # 凭据密钥
-    secret-key: minioadmin
-    # 存储桶名称
-    bucket-name: public
-    # (可选)自定义域名，如果配置了域名，生成的文件URL是域名格式，未配置则URL则是IP格式 (eg: https://oss.youlai.tech)
+    endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    access-key: ${MINIO_ACCESS_KEY}
+    secret-key: ${MINIO_SECRET_KEY}
+    bucket-name: ${MINIO_BUCKET:godlikeagents}
     custom-domain:
-  # 阿里云OSS对象存储服务
   aliyun:
-    # 服务Endpoint
-    endpoint: oss-cn-hangzhou.aliyuncs.com
-    # 访问凭据
-    access-key-id: your-access-key-id
-    # 凭据密钥
-    access-key-secret: your-access-key-secret
-    # 存储桶名称
-    bucket-name: default
-  # 本地存储
+    endpoint: ${ALIYUN_OSS_ENDPOINT:oss-cn-hangzhou.aliyuncs.com}
+    access-key-id: ${ALIYUN_ACCESS_KEY_ID}
+    access-key-secret: ${ALIYUN_ACCESS_KEY_SECRET}
+    bucket-name: ${ALIYUN_OSS_BUCKET:default}
   local:
-    # 文件存储路径 请注意下，mac用户请使用 /Users/your-username/your-path/，否则会有权限问题，windows用户请使用 D:/your-path/
-    storage-path: /Users/theo/home/
+    storage-path: ${OSS_LOCAL_PATH:/data/files}
+
 # 短信配置
 sms:
-  # 阿里云短信
   aliyun:
-    accessKeyId: ${SMS_ACCESS_KEY_ID:your-sms-access-key-id}
-    accessKeySecret: ${SMS_ACCESS_KEY_SECRET:your-sms-access-key-secret}
+    accessKeyId: ${SMS_ACCESS_KEY_ID}
+    accessKeySecret: ${SMS_ACCESS_KEY_SECRET}
     domain: dysmsapi.aliyuncs.com
     regionId: cn-shanghai
-    signName: 有来技术
+    signName: ${SMS_SIGN_NAME}
     templates:
-      #  注册短信验证码模板
-      register: SMS_22xxx771
-      # 登录短信验证码模板
-      login: SMS_22xxx772
-      # 修改手机号短信验证码模板
-      change-mobile: SMS_22xxx773
+      register: ${SMS_TEMPLATE_REGISTER:SMS_22xxx771}
+      login: ${SMS_TEMPLATE_LOGIN:SMS_22xxx772}
+      change-mobile: ${SMS_TEMPLATE_CHANGE_MOBILE:SMS_22xxx773}
 
-# springdoc配置： https://springdoc.org/properties.html
+# springdoc配置
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
-    operationsSorter: alpha
+    operations-sorter: alpha
     tags-sorter: alpha
   api-docs:
     path: /v3/api-docs
@@ -160,26 +142,26 @@ springdoc:
         - com.hypersense.boot.system.controller
         - com.hypersense.boot.platform.file.controller
         - com.hypersense.boot.platform.codegen.controller
+    - group: "AI智能体"
+      paths-to-match: "/**"
+      packages-to-scan:
+        - com.hypersense.boot.framework.agents.controller
   default-flat-param-object: true
 
 # knife4j 接口文档配置
 knife4j:
-  # 是否开启 Knife4j 增强功能
-  enable: true # 设置为 true 表示开启增强功能
-  # 生产环境配置
-  production: false # 设置为 true 表示在生产环境中不显示文档，为 false 表示显示文档（通常在开发环境中使用）
+  enable: true
+  production: true
   setting:
     language: zh_cn
 
 # xxl-job 定时任务配置
 xxl:
   job:
-    # 定时任务开关
-    enabled: false
+    enabled: ${XXL_JOB_ENABLED:false}
     admin:
-      # 多个地址使用,分割
-      addresses: http://localhost:8686/xxl-job-admin
-    accessToken: default_token
+      addresses: ${XXL_JOB_ADDRESSES}
+    accessToken: ${XXL_JOB_TOKEN}
     executor:
       appname: xxl-job-executor-${spring.application.name}
       address:
@@ -190,51 +172,92 @@ xxl:
 
 # 验证码配置
 captcha:
-  # 验证码类型 circle-圆圈干扰验证码|gif-Gif验证码|line-干扰线验证码|shear-扭曲干扰验证码
   type: circle
-  # 验证码宽度
   width: 120
-  # 验证码高度
   height: 40
-  # 验证码干扰元素个数
   interfere-count: 2
-  # 文本透明度(0.0-1.0)
   text-alpha: 0.8
-  # 验证码字符配置
   code:
-    # 验证码字符类型 math-算术|random-随机字符
     type: math
-    # 验证码字符长度，type=算术时，表示运算位数(1:个位数运算 2:十位数运算)；type=随机字符时，表示字符个数
     length: 1
-  # 验证码字体
   font:
-    # 字体名称 Dialog|DialogInput|Monospaced|Serif|SansSerif
     name: SansSerif
-    # 字体样式 0-普通|1-粗体|2-斜体
     weight: 1
-    # 字体大小
     size: 24
-  # 验证码有效期(秒)
   expire-seconds: 120
 
-# 微信小程配置
+# 微信小程序配置
 wx:
   miniapp:
-    app-id: ${WX_MINIAPP_APP_ID:your-app-id}
-    app-secret: ${WX_MINIAPP_APP_SECRET:your-app-secret}
+    app-id: ${WX_MINIAPP_APP_ID}
+    app-secret: ${WX_MINIAPP_APP_SECRET}
+
+# 多租户配置
 tenant:
-  # 租户字段名（默认：tenant_id）
   column: tenant_id
-  # 忽略多租户过滤的表名列表（系统表、租户表等不需要租户隔离的表）
   ignore-tables:
-    - sys_tenant # 租户表本身
-    - sys_tenant_plan # 租户套餐表
-    - sys_tenant_plan_menu # 租户套餐菜单关联表
-    - sys_log # 系统日志表（允许无租户上下文写入）
-    - sys_menu # 菜单表（功能入口定义，所有租户共享）
-    - sys_dict # 字典表（通常共享）
-    - sys_dict_item # 字典项表（通常共享）
-    - sys_config # 系统配置表（通常共享）
-    - gen_table # 代码生成表（平台共用）
-    - gen_table_column # 代码生成字段表（平台共用）
+    - sys_tenant
+    - sys_tenant_plan
+    - sys_tenant_plan_menu
+    - sys_menu
+    - sys_dict
+    - sys_dict_item
+    - sys_config
+    - gen_table
+    - gen_table_column
+    - agent_memory
 # ============================================
+
+# AI Agent 配置
+agent:
+  llm:
+    provider: openai
+    temperature: 0.7
+    max-tokens: 4096
+    openai:
+      endpoint: ${AGENT_LLM_ENDPOINT:https://open.bigmodel.cn/api/coding/paas/v4}
+      api-key: ${ZHIPU_API_KEY}
+      model-name: ${AGENT_LLM_MODEL:glm-4.7}
+    ollama:
+      endpoint: http://localhost:11434
+      model-name: llama3
+  deep:
+    recursion-limit: 50
+    max-iterations: 25
+    checkpoint-enabled: true
+    session-ttl: 1800
+  # 技能系统配置
+  skills:
+    dirs:
+      - ${AGENT_SKILLS_DIR:/opt/agent-skills}
+  # 长期记忆配置
+  memory:
+    enabled: ${AGENT_MEMORY_ENABLED:true}
+    embedding-model: embedding-3
+    embedding-dimensions: 2048
+    retention-days: 90
+    similarity-threshold: 0.7
+    max-retrieval-count: 10
+  # 工具配置
+  tools:
+    search:
+      enabled: ${AGENT_SEARCH_ENABLED:true}
+      endpoint: ${AGENT_SEARCH_ENDPOINT:http://localhost:8888/search}
+      api-key:
+      max-results: 5
+    sandbox:
+      enabled: ${AGENT_SANDBOX_ENABLED:false}
+      type: ${AGENT_SANDBOX_TYPE:local}
+      timeout: 30
+      max-output-bytes: 65536
+      allowed-languages: python,javascript,shell
+      work-dir: ${java.io.tmpdir}/agent-sandbox
+      local:
+        sanitize-env: true
+      remote:
+        provider: modal
+        endpoint:
+        api-key:
+      custom:
+        runtime: docker
+        image: python:3.12-slim
